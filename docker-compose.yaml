@@ -61,6 +61,33 @@ services:
     networks:
       - cryptellation
 
+  candlesticks-migrator:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    image: ghcr.io/cryptellation/candlesticks
+    command: ["worker", "database", "migrate"]
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_candlesticks password=cryptellation_candlesticks dbname=cryptellation_candlesticks sslmode=disable"
+    networks:
+      - cryptellation
+  candlesticks-worker:
+    image: ghcr.io/cryptellation/candlesticks
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_candlesticks password=cryptellation_candlesticks dbname=cryptellation_candlesticks sslmode=disable"
+      TEMPORAL_ADDRESS: temporal:7233
+    env_file:
+      - path: .credentials.env
+        required: true
+    command: ["worker", "serve"]
+    networks:
+      - cryptellation
+
   exchanges-migrator:
     depends_on:
       postgresql:
