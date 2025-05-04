@@ -41,7 +41,7 @@ services:
       - ./temporal:/etc/temporal/config/dynamicconfig
     healthcheck:
       test:
-        ["CMD","tctl", "--address", "temporal:7233", "workflow", "list", "||", "exit 1"]
+        ["CMD", "tctl", "--address", "temporal:7233", "workflow", "list", "||", "exit 1"]
       interval: 1s
       timeout: 5s
       retries: 30
@@ -107,6 +107,33 @@ services:
         condition: service_healthy
     environment:
       SQL_DSN: "host=postgresql user=cryptellation_exchanges password=cryptellation_exchanges dbname=cryptellation_exchanges sslmode=disable"
+      TEMPORAL_ADDRESS: temporal:7233
+    env_file:
+      - path: .credentials.env
+        required: true
+    command: ["worker", "serve"]
+    networks:
+      - cryptellation
+
+  ticks-migrator:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    image: ghcr.io/cryptellation/ticks
+    command: ["worker", "database", "migrate"]
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_ticks password=cryptellation_ticks dbname=cryptellation_ticks sslmode=disable"
+    networks:
+      - cryptellation
+  ticks-worker:
+    image: ghcr.io/cryptellation/ticks
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_ticks password=cryptellation_ticks dbname=cryptellation_ticks sslmode=disable"
       TEMPORAL_ADDRESS: temporal:7233
     env_file:
       - path: .credentials.env
