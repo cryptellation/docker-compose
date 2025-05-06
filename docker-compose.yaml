@@ -115,6 +115,33 @@ services:
     networks:
       - cryptellation
 
+  sma-migrator:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    image: ghcr.io/cryptellation/sma
+    command: ["worker", "database", "migrate"]
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_sma password=cryptellation_sma dbname=cryptellation_sma sslmode=disable"
+    networks:
+      - cryptellation
+  sma-worker:
+    image: ghcr.io/cryptellation/sma
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_sma password=cryptellation_sma dbname=cryptellation_sma sslmode=disable"
+      TEMPORAL_ADDRESS: temporal:7233
+    env_file:
+      - path: .credentials.env
+        required: true
+    command: ["worker", "serve"]
+    networks:
+      - cryptellation
+
   ticks-migrator:
     depends_on:
       postgresql:
