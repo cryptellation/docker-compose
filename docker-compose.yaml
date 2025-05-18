@@ -61,6 +61,30 @@ services:
     networks:
       - cryptellation
 
+  backtests-migrator:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    image: ghcr.io/cryptellation/backtests
+    command: ["worker", "database", "migrate"]
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_backtests password=cryptellation_backtests dbname=cryptellation_backtests sslmode=disable"
+    networks:
+      - cryptellation
+  backtests-worker:
+    image: ghcr.io/cryptellation/backtests
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_backtests password=cryptellation_backtests dbname=cryptellation_backtests sslmode=disable"
+      TEMPORAL_ADDRESS: temporal:7233
+    command: ["worker", "serve"]
+    networks:
+      - cryptellation
+
   candlesticks-migrator:
     depends_on:
       postgresql:
@@ -115,6 +139,30 @@ services:
     networks:
       - cryptellation
 
+  forwardtests-migrator:
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    image: ghcr.io/cryptellation/forwardtests
+    command: ["worker", "database", "migrate"]
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_forwardtests password=cryptellation_forwardtests dbname=cryptellation_forwardtests sslmode=disable"
+    networks:
+      - cryptellation
+  forwardtests-worker:
+    image: ghcr.io/cryptellation/forwardtests
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    environment:
+      SQL_DSN: "host=postgresql user=cryptellation_forwardtests password=cryptellation_forwardtests dbname=cryptellation_forwardtests sslmode=disable"
+      TEMPORAL_ADDRESS: temporal:7233
+    command: ["worker", "serve"]
+    networks:
+      - cryptellation
+
   sma-migrator:
     depends_on:
       postgresql:
@@ -135,9 +183,6 @@ services:
     environment:
       SQL_DSN: "host=postgresql user=cryptellation_sma password=cryptellation_sma dbname=cryptellation_sma sslmode=disable"
       TEMPORAL_ADDRESS: temporal:7233
-    env_file:
-      - path: .credentials.env
-        required: true
     command: ["worker", "serve"]
     networks:
       - cryptellation
