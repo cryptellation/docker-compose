@@ -22,7 +22,7 @@ import (
 
 type DockerCompose struct{}
 
-// Publish a new release
+// Publish a new release.
 func (ci *DockerCompose) PublishTag(
 	ctx context.Context,
 	sourceDir *dagger.Directory,
@@ -41,4 +41,35 @@ func (ci *DockerCompose) PublishTag(
 
 	// Publish new tag
 	return repo.PublishTagFromReleaseTitle(ctx)
+}
+
+// Lint runs golangci-lint on the .dagger directory only.
+func (ci *DockerCompose) Lint(sourceDir *dagger.Directory) *dagger.Container {
+	c := dag.Container().
+		From("golangci/golangci-lint:v1.62.0").
+		WithMountedCache("/root/.cache/golangci-lint", dag.CacheVolume("golangci-lint"))
+
+	c = ci.withGoCodeAndCacheAsWorkDirectory(c, sourceDir)
+
+	// Lint only .dagger directory
+	c = c.WithExec([]string{"sh", "-c", "cd .dagger && golangci-lint run --config ../.golangci.yml --timeout 10m ."})
+
+	return c
+}
+
+func (ci *DockerCompose) withGoCodeAndCacheAsWorkDirectory(
+	c *dagger.Container,
+	sourceDir *dagger.Directory,
+) *dagger.Container {
+	containerPath := "/go/src/github.com/cryptellation/docker-compose"
+	return c.
+		// Add Go caches
+		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("gobuild")).
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("gocache")).
+
+		// Add source code
+		WithMountedDirectory(containerPath, sourceDir).
+
+		// Add workdir
+		WithWorkdir(containerPath)
 }
